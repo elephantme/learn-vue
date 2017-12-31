@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>title</title>
+        <meta charset="utf-8">
+        <style>
+            .red {
+                color: red;
+            }
+        </style>
+        <script src="dist/seed.js"></script>
+    </head>
+    <body>
+        <div id="test" sd-on-click="toggle | .button">
+            <p sd-text="msg | capitalize"></p>
+            <p sd-class-red="error" sd-text="content"></p>
+            <button class="button">Toggle class</button>
+        </div>
+        <script>
+            var Seed = require('seed');
+            var app = Seed.create({
+                id: 'test',
+                scope: {
+                    msg: 'hello',
+                    content: 'world',
+                    error: true,
+                    toggle: function() {
+                        app.scope.error = !app.scope.error;
+                    }
+                }
+            });
+        </script>
+    </body>
+</html>
