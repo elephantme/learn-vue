@@ -1,7 +1,30 @@
-const prefix = 'sd';
+const config = require('./config');
+const Directive = require('./directive');
 const Directives = require('./directives');
 const Filters = require('./filters');
-const selector = Object.keys(Directives).map((name) => `[${prefix}-${name}]`).join(',');
+const Seed = require('./seed');
+
+function buildSelector() {
+    config.selector = Object.keys(Directives).map((name) => `[${config.prefix}-${name}]`).join(',');
+}
+
+Seed.config = config;
+buildSelector();
+
+Seed.extend = function(opts) {
+
+};
+
+Seed.directive = function(name, fn) {
+    Directive[name] = fn;
+    buildSelector();
+};
+
+Seed.filter = function(name, fn) {
+    Filters[name] = fn;
+};
+
+module.exports = Seed;
 
 const Seed = function(opts) {
     const self = this,
