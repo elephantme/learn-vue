@@ -1,5 +1,6 @@
 const config = require('./config');
 const Directives = require('./directives');
+const Filters = require('./filters');
 
 const KEY_REG = /^[^\|]+/;
 const FILTER_REG = /\|[^\|]+/g;
@@ -24,13 +25,32 @@ function Directive(def, attr, arg, key) {
     // 解析filters
     const filters = attr.value.match(FILTER_REG);
     if (filters) {
-        console.log(filters);
+        this.filters = filters.map(function(filter) {
+            const tokens = filter.replace('|', '').trim().split(/\s+/);
+            return {
+                name: tokens[0],
+                apply: Filters[tokens[0]],
+                args: tokens.length > 1 ? tokens.slice(1) : null
+            };
+        });
     }
 }
 
-Directive.prototype.update = function() {};
+Directive.prototype.update = function(value) {
+    if (this.filters) {
+        value = this.applyFilters(value);
+    }
+    this._update(value);
+};
 
-Directive.prototype.applyFilters = function() {};
+Directive.prototype.applyFilters = function(value) {
+    var filtered = value;
+    this.filters.forEach(function (filter) {
+        if (!filter.apply) throw new Error('Unknown filter: ' + filter.name)
+        filtered = filter.apply(filtered, filter.args);
+    })
+    return filtered;
+};
 
 module.exports = {
     parse: function(attr) {
