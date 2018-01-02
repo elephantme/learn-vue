@@ -9,8 +9,9 @@
     "src/config.js",
     "src/seed.js",
     "src/directive-parser.js",
-    "src/directives.js",
     "src/filters.js",
-    "src/watchArray.js"
+    "src/directives/index.js",
+    "src/directives/each.js",
+    "src/directives/on.js"
   ]
 }

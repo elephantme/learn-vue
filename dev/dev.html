@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <title>title</title>
+        <title>Todo</title>
         <meta charset="utf-8">
+        <script src="../dist/seed.js"></script>
         <style type="text/css">
             .red {
                 color: red;
@@ -26,7 +27,6 @@
                 font-weight: bold;
             }
         </style>
-        <script src="../dist/seed.js"></script>
     </head>
     <body>
         <div id="app" sd-controller="Todos" sd-class="filter">
@@ -49,8 +49,10 @@
                 <a class="remaining" sd-on="click:setFilter">Show Remaining</a> |
                 <a class="completed" sd-on="click:setFilter">Show Completed</a>
             </div>
+
         </div>
         <script>
+
             var Seed = require('seed')
 
             var todos = [
@@ -60,12 +62,12 @@
                 { text: 'parse textnodes', done: false }
             ]
 
-            Seed.controller('Todos', function (scope, seed) {
+            Seed.controller('Todos', function (scope) {
 
                 // regular properties
                 scope.todos = todos
                 scope.filter = 'all'
-                scope.remaining = scope.todos.reduce(function (count, todo) {
+                scope.remaining = todos.reduce(function (count, todo) {
                     return count + (todo.done ? 0 : 1)
                 }, 0)
 
@@ -80,24 +82,21 @@
 
                 // event handlers
                 scope.addTodo = function (e) {
-                    var text = e.el.value
-                    if (text) {
+                    var val = e.el.value
+                    if (val) {
                         e.el.value = ''
-                        scope.todos.push({
-                            text: text,
-                            done: false
-                        })
+                        scope.todos.unshift({ text: val, done: false })
                         scope.remaining++
                     }
                 }
 
                 scope.removeTodo = function (e) {
-                    scope.todos.splice(e.seed.index, 1)
-                    scope.remaining -= e.seed.scope.done ? 0 : 1
+                    scope.todos.splice(e.scope.$index, 1)
+                    scope.remaining -= e.scope.done ? 0 : 1
                 }
 
                 scope.toggleTodo = function (e) {
-                    scope.remaining += e.seed.scope.done ? -1 : 1
+                    scope.remaining += e.scope.done ? -1 : 1
                 }
 
                 scope.setFilter = function (e) {
@@ -106,7 +105,8 @@
 
             })
 
-            Seed.bootstrap()
+            var app = Seed.bootstrap()
+
         </script>
     </body>
 </html>

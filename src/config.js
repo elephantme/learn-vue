@@ -1,4 +1,6 @@
 module.exports = {
     prefix: 'sd',
-    selector: null
+    controllers: {},
+    datum: {},
+    seeds: {}
 };

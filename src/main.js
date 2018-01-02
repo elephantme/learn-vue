@@ -3,32 +3,9 @@ const Seed = require('./seed');
 const directives = require('./directives');
 const filters = require('./filters');
 
-const controllers = config.controllers = {};
-const datum = config.datum = {};
+const controllers = config.controllers;
+const datum = config.datum;
 const api = {};
-
-api.config = config;
-
-api.extend = function(opts) {
-    const Spore = function() {
-        Seed.apply(this, arguments);
-        for(let prop in this.extensions) {
-            let ext = this.extensions[prop];
-            if (typeof ext === 'function') {
-                ext = ext.bind(this);
-            }
-            this.scope[prop] = ext;
-        }
-    };
-
-    Spore.prototype = Object.create(Seed.prototype);
-    Spore.prototype.extensions = {};
-    for(let prop in opts) {
-        Spore.prototype.extensions[prop] = opts[prop];
-    }
-
-    return Spore;
-};
 
 api.data = function(id, data) {
     if (!data) return datum[id];
@@ -43,7 +20,20 @@ api.controller = function(id, extensions) {
     controllers[id] = extensions;
 };
 
-api.bootstrap = function() {
+api.directive = function(name, fn) {
+    if (!fn) return directives[name];
+    directives[name] = fn;
+};
+
+api.filter = function(name, fn) {
+    if (!fn) return filters[name];
+    filters[name] = fn;
+};
+
+api.bootstrap = function(opts) {
+    if (opts) {
+        config.prefix = opts.prefix || config.prefix;
+    }
     let app = {},
         n = 0,
         el, seed;
@@ -58,14 +48,6 @@ api.bootstrap = function() {
     }
 
     return n > 1 ? app : seed;
-};
-
-api.directive = function(name, fn) {
-    directive[name] = fn;
-};
-
-api.filter = function(name, fn) {
-    filters[name] = fn;
 };
 
 module.exports = api;
