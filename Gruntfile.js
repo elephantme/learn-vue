@@ -48,6 +48,6 @@ module.exports = function( grunt ) {
     grunt.loadNpmTasks( 'grunt-component-build' )
     grunt.loadNpmTasks( 'grunt-mocha' )
     grunt.registerTask( 'test', ['mocha'] )
-    grunt.registerTask( 'default', ['jshint', 'component_build', 'mocha'] )
-    
+    grunt.registerTask( 'default', ['component_build'] )
+
 }

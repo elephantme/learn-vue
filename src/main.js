@@ -1,14 +1,10 @@
 const config = require('./config');
+const Seed = require('./seed');
 const directives = require('./directives');
 const filters = require('./filters');
-const Seed = require('./seed');
-
-// function buildSelector() {
-//     config.selector = Object.keys(Directives).map((name) => `[${config.prefix}-${name}]`).join(',');
-// }
+const controllers = require('./controllers');
 
 Seed.config = config;
-// buildSelector();
 
 Seed.extend = function(opts) {
     const Spore = function() {
@@ -31,9 +27,29 @@ Seed.extend = function(opts) {
     return Spore;
 };
 
+Seed.controller = function(id, extensions) {
+    if (controllers[id]) {
+        console.warn(`controllere ${id} was already registered and has been overwritten.`);
+    }
+    controllers[id] = extensions;
+};
+
+Seed.bootstrap = function(seeds) {
+    if (!Array.isArray(seeds)) seeds = [seeds];
+    const instances = [];
+    seeds.forEach(function(seed) {
+        let el = seed.el;
+        if (typeof el === 'string') {
+            el = document.querySelector(el);
+        }
+        if (!el) console.warn('invalid element or selector: ' + seed.el);
+        instances.push(new Seed(el, seed.data, seed.options));
+    });
+    return instances.length > 1 ? instances : instances[0];
+};
+
 Seed.directive = function(name, fn) {
     directive[name] = fn;
-    // buildSelector();
 };
 
 Seed.filter = function(name, fn) {

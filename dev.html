@@ -7,28 +7,56 @@
             .red {
                 color: red;
             }
+            .todo.done {
+                text-decoration: line-through;
+            }
         </style>
         <script src="dist/seed.js"></script>
     </head>
     <body>
-        <div id="test" sd-on-click="changeMessage | delegate .button">
-            <p sd-text="msg.wow | capitalize" sd-on-click="remove"></p>
-            <p sd-text="msg.wow | uppercase" class="button"></p>
+        <div id="app" sd-controller="TodoList" sd-on="click:changeMessage | delegate .button">
+            <p sd-text="msg | capitalize"></p>
+            <p sd-text="msg | uppercase"></p>
+            <p sd-on="click:remove">bye</p>
             <p sd-text="total | money"></p>
-            <p sd-class-red="error" sd-text="hello"></p>
+            <p class="button">Change Message</p>
+            <p sd-class="red:error" sd-show="error">Error</p>
             <ul sd-show="todos">
-            	<li sd-each-todo="todos">
-                    <span class="todo" sd-text="todo.title" sd-class-done="todo.done"></span>
+                <li
+                    class="todo"
+                    sd-controller="Todo"
+                    sd-each="todo:todos"
+                    sd-class="done:todo.done"
+                    sd-on="click:changeMessage, click:todo.toggle"
+                    sd-text="todo.title"
+                >
                 </li>
             </ul>
         </div>
         <script>
             var Seed = require('seed');
-            
+
             Seed.filter('money', function (value) {
 			    return '$' + value.toFixed(2);
             });
-            
+
+            Seed.controller('TodoList', function(scope, seed) {
+
+                scope.changeMessage = function() {
+                    scope.msg = 'It works!';
+                };
+
+                scope.remove = function() {
+                    seed.destroy();
+                };
+            });
+
+            Seed.controller('Todo', function(scope) {
+                scope.toggle = function() {
+                    scope.done = !scope.done;
+                };
+            });
+
             var list = [
                 {
                     title: 'make this shit kinda work',
@@ -42,22 +70,17 @@
                     title: 'more features!!!',
                     done: false
                 }
-            ]
+            ];
 
-            var todos = new Seed('#test', {
-                total     : Math.random() * 100000,
-                'msg.wow' : 'wow',
-                hello     : 'hello',
-                todos     : list,
-                changeMessage: function () {
-                    this.scope['msg.wow'] = 'hola'
-                },
-                remove: function () {
-                    this.destroy()
+            var app = Seed.bootstrap({
+                el: '#app',
+                data: {
+                    msg: 'hello!',
+                    total: 9999,
+                    error: true,
+                    todos: list
                 }
             });
-
-            console.log(todos)
         </script>
     </body>
 </html>
