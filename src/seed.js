@@ -1,14 +1,15 @@
 const config = require('./config');
-const controllers = require('./controllers');
-const bindingParse =  require('./binding');
+const DirectiveParser =  require('./directive-parser');
 
-const map = Array.prototype.map,
-    each = Array.prototype.forEach;
+const slice = Array.prototype.slice;
+
+const ancestorKeyRE = /\^/g,
+    rootKeyRE = /^\$/;
 
 let ctrlAttr,
     eachAttr;
 
-function Seed (el, data, options) {
+function Seed (el, options) {
     ctrlAttr = config.prefix + '-controller';
     eachAttr = config.prefix + '-each';
 
@@ -16,32 +17,47 @@ function Seed (el, data, options) {
         el = document.querySelector(el);
     }
 
+    el.seed = this;
     this.el = el;
-    this.scope = data;
     this._bindings = {};
-    this._options = options || {};
+    this.components = {};
 
-    let dataCopy = {}
-    for (let key in data) {
-        dataCopy[key] = data[key];
+    if (options) {
+        for (let op in options) {
+            this[op] = options[op];
+        }
+    }
+
+    const dataPrefix = config.prefix + '-data';
+
+    this.scope =
+        (options && options.data)
+        || config.datum[el.getAttribute(dataPrefix)]
+        || {};
+
+    el.removeAttribute(dataPrefix);
+
+    this._dataCopy = {}
+    for (let key in this.scope) {
+        this._dataCopy[key] = this.scope[key];
     }
 
     const ctrlID = el.getAttribute(ctrlAttr);
     let controller = null;
     if (ctrlID) {
-        controller = controllers[ctrlID];
-        el.removeAttribute(ctrlAttr);
+        controller = config.controllers[ctrlID];
         if (!controller) throw new Error('controller ' + ctrlID + ' is not defined.')
+        el.removeAttribute(ctrlAttr);
     }
 
     this._compileNode(el, true);
 
-    for(let key in this._bindings) {
-        this.scope[key] = dataCopy[key];
+    for(let key in this._dataCopy) {
+        this.scope[key] = this._dataCopy[key];
     }
 
     if (controller) {
-        controller.call(null, this.scope, this);
+        controller.call(this, this.scope, this);
     }
 }
 
@@ -50,27 +66,31 @@ Seed.prototype._compileNode = function(node, root) {
 
     if (node.nodeType === 3) {
         self._compileTextNode(node);
-    } else if (node.attributes && node.attributes.length) {
+    } else {
         const eachExp = node.getAttribute(eachAttr),
             ctrlExp = node.getAttribute(ctrlAttr);
 
         if (eachExp) {
-            const binding = bindingParse.parse(eachAttr, eachExp);
+            const binding = DirectiveParser.parse(eachAttr, eachExp);
             if (binding) {
                 self._bind(node, binding);
+                self.scope[binding.key] = self._dataCopy[binding.key];
+                delete self._dataCopy[binding.key];
             }
-        } else if (!ctrlExp || root) {
-            const attrs = map.call(node.attributes, function(attr) {
-                return {
-                    name: attr.name,
-                    expressions: attr.value.split(',')
-                };
-            });
-            attrs.forEach((attr) => {
+        } else if (ctrlExp && !root) { // nested controllers
+            const id = node.id,
+                seed = new Seed(node, {
+                    parentSeed: self
+                });
+
+            if (id) {
+                self['$' + id] = seed;
+            }
+        } else if (node.attributes && node.attributes.length) {
+            slice.call(node.attributes).forEach(function(attr) {
                 let valid = false;
-                attr.expressions.forEach(function(exp) {
-                    const binding = bindingParse.parse(attr.name, exp);
-                    console.log(binding)
+                attr.value.split(',').forEach(function(exp) {
+                    const binding = DirectiveParser.parse(attr.name, exp)
                     if (binding) {
                         valid = true;
                         self._bind(node, binding);
@@ -78,8 +98,11 @@ Seed.prototype._compileNode = function(node, root) {
                 });
                 if (valid) node.removeAttribute(attr.name);
             });
+        }
+
+        if (!eachExp && !ctrlExp) {
             if (node.childNodes.length) {
-                each.call(node.childNodes, function(child) {
+                slice.call(node.childNodes).forEach(function (child) {
                     self._compileNode(child);
                 });
             }
@@ -91,27 +114,47 @@ Seed.prototype._compileTextNode = function (node) {
     return node;
 };
 
-Seed.prototype._bind = function(node, bindingInstance) {
-    bindingInstance.seed = this;
-    bindingInstance.el = node;
+Seed.prototype._bind = function(node, directive) {
+    directive.el = node;
+    directive.seed = this;
 
-    let key = bindingInstance.key,
-        epr = this._options.eachPrefixRE,
-        isEach = epr && epr.test(key),
-        seed = this;
+    let key = directive.key,
+        snr = this.eachPrefixRE,
+        isEach = snr && snr.test(key),
+        scopeOwner = this;
 
     if (isEach) {
-        key = key.replace(epr, '');
-    } else if (epr) {
-        seed = this._options.parentSeed;
+        key = key.replace(snr, '');
     }
 
-    const binding = seed._bindings[key] || seed._createBinding(key);
+    // 处理嵌套作用域
+    if (snr && !isEach) {
+        scopeOwner = this.parentSeed;
+    } else {
+        var ancestors = key.match(ancestorKeyRE),
+            root      = key.match(rootKeyRE)
+        if (ancestors) {
+            key = key.replace(ancestorKeyRE, '')
+            var levels = ancestors.length
+            while (scopeOwner.parentSeed && levels--) {
+                scopeOwner = scopeOwner.parentSeed
+            }
+        } else if (root) {
+            key = key.replace(rootKeyRE, '')
+            while (scopeOwner.parentSeed) {
+                scopeOwner = scopeOwner.parentSeed
+            }
+        }
+    }
 
-    binding.instances.push(bindingInstance);
+    directive.key = key;
 
-    if (bindingInstance.bind) {
-        bindingInstance.bind.call(bindingInstance, binding.value);
+    const binding = scopeOwner._bindings[key] || scopeOwner._createBinding(key);
+
+    binding.instances.push(directive);
+
+    if (directive.bind) {
+        directive.bind(binding.value);
     }
 };
 
@@ -141,6 +184,7 @@ Seed.prototype._createBinding = function(key, scope) {
 Seed.prototype.destroy = function() {
     for (let key in this._bindings) {
         this._bindings[key].instances.forEach(unbind);
+        delete this._binding[key];
     }
     this.el.parentNode.remove(this.el);
 

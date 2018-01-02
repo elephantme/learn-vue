@@ -2,11 +2,14 @@ const config = require('./config');
 const Seed = require('./seed');
 const directives = require('./directives');
 const filters = require('./filters');
-const controllers = require('./controllers');
 
-Seed.config = config;
+const controllers = config.controllers = {};
+const datum = config.datum = {};
+const api = {};
 
-Seed.extend = function(opts) {
+api.config = config;
+
+api.extend = function(opts) {
     const Spore = function() {
         Seed.apply(this, arguments);
         for(let prop in this.extensions) {
@@ -27,33 +30,42 @@ Seed.extend = function(opts) {
     return Spore;
 };
 
-Seed.controller = function(id, extensions) {
+api.data = function(id, data) {
+    if (!data) return datum[id];
+    datum[id] = data;
+};
+
+api.controller = function(id, extensions) {
+    if (!extensions) return controllers[id];
     if (controllers[id]) {
         console.warn(`controllere ${id} was already registered and has been overwritten.`);
     }
     controllers[id] = extensions;
 };
 
-Seed.bootstrap = function(seeds) {
-    if (!Array.isArray(seeds)) seeds = [seeds];
-    const instances = [];
-    seeds.forEach(function(seed) {
-        let el = seed.el;
-        if (typeof el === 'string') {
-            el = document.querySelector(el);
+api.bootstrap = function() {
+    let app = {},
+        n = 0,
+        el, seed;
+
+    // 下次循环就退出了，因为attribute被remove掉了
+    while (el = document.querySelector(`[${config.prefix}-controller]`)) {
+        seed = new Seed(el);
+        if (el.id) {
+            app['$' + el.id] = seed;
         }
-        if (!el) console.warn('invalid element or selector: ' + seed.el);
-        instances.push(new Seed(el, seed.data, seed.options));
-    });
-    return instances.length > 1 ? instances : instances[0];
+        n++;
+    }
+
+    return n > 1 ? app : seed;
 };
 
-Seed.directive = function(name, fn) {
+api.directive = function(name, fn) {
     directive[name] = fn;
 };
 
-Seed.filter = function(name, fn) {
+api.filter = function(name, fn) {
     filters[name] = fn;
 };
 
-module.exports = Seed;
+module.exports = api;
